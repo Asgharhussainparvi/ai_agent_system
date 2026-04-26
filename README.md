@@ -1,3 +1,12 @@
+---
+title: Autonomous Multi-Agent AI Content System
+emoji: 🤖
+colorFrom: purple
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
+
 # 🤖 Autonomous Multi-Agent AI Content System
 
 > Scrapes trending AI topics → generates YouTube-ready videos → uploads automatically
@@ -30,7 +39,7 @@ cp .env.example .env
 docker compose up --build
 
 # 3. API available at
-http://localhost:8000/docs
+http://localhost:7860/docs
 ```
 
 ## API Endpoints

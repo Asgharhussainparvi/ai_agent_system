@@ -28,6 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
  && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
 
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH
+WORKDIR $HOME/app
+
 # ── Working directory ─────────────────────────────────────────────────────────
 WORKDIR /app
 
@@ -48,15 +53,17 @@ RUN mkdir -p /app/outputs/images \
 # ── Environment defaults (override via .env or docker-compose) ────────────────
 ENV OUTPUT_DIR=/app/outputs \
     API_HOST=0.0.0.0 \
-    API_PORT=8000 \
+    API_PORT=7860 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-EXPOSE 8000
+EXPOSE 7860
 
 # ── Healthcheck ───────────────────────────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
 # ── Default command: start API server ─────────────────────────────────────────
+
 CMD ["python", "main.py", "api"]
+

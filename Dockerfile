@@ -47,18 +47,22 @@ RUN mkdir -p /app/outputs/images \
 # ── Environment defaults (overridden by .env / docker-compose) ────────────────
 ENV OUTPUT_DIR=/app/outputs \
     API_HOST=0.0.0.0 \
-    API_PORT=8000 \
+    API_PORT=7860 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     TRANSFORMERS_CACHE=/app/.cache/huggingface \
     HF_HOME=/app/.cache/huggingface
 
 # ── Expose API port ───────────────────────────────────────────────────────────
-EXPOSE 8000
+EXPOSE 7860
 
 # ── Health check ─────────────────────────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
 # ── Default command: start API server ────────────────────────────────────────
+RUN --mount=type=secret,id=GROQ_API_KEY,mode=0444 true
+RUN --mount=type=secret,id=HF_TOKEN,mode=0444 true
+# etc. for each secret
+
 CMD ["python", "main.py", "api"]
