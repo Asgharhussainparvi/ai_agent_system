@@ -15,7 +15,9 @@ Endpoints:
 
 from __future__ import annotations
 
+import time
 import uuid
+from pathlib import Path
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -110,25 +112,31 @@ def scrape_topics(
 
 
 @app.post("/pipeline/run", tags=["Pipeline"])
-def run_pipeline(req: PipelineRequest, background_tasks: BackgroundTasks):
-    """
-    Start a full content-generation pipeline asynchronously.
 
-    - If `topic` is omitted, the ScraperAgent auto-discovers a trending topic.
-    - Returns a `job_id` immediately; poll `/pipeline/status/{job_id}` for results.
-    """
-    job_id = str(uuid.uuid4())[:8]
-    _JOBS[job_id] = PipelineState(job_id=job_id, status="pending")
-    _log.info("Pipeline job %s queued (topic=%s)", job_id, req.topic or "auto")
+def _run_pipeline(job_id: str, topic: Optional[str], upload_to_youtube: bool):
+    """Runs the full orchestrator pipeline in a background thread."""
+    try:
+        orch = Orchestrator(job_id=job_id)
+        state = orch.run(topic=topic, upload_to_youtube=upload_to_youtube)
+        _JOBS[job_id] = state
 
-    background_tasks.add_task(
-        _run_pipeline, job_id, req.topic, req.upload_to_youtube
-    )
-    return {
-        "job_id":  job_id,
-        "status":  "queued",
-        "message": f"Pipeline started. Poll /pipeline/status/{job_id} for updates.",
-    }
+    except Exception as exc:
+        _log.exception("Background pipeline job %s crashed", job_id)
+
+        state = _JOBS.get(job_id)
+        if state is not None:
+            state.status = "error"
+            state.elapsed_s = round(time.time() - state.started_at, 1)
+            state.errors.append(f"{type(exc).__name__}: {exc}")
+
+            try:
+                state.snapshot()
+            except Exception:
+                _log.exception(
+                    "Could not persist failed pipeline job %s",
+                    job_id,
+                )
+
 
 
 @app.get("/pipeline/status/{job_id}", tags=["Pipeline"])

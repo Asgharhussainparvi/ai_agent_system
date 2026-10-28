@@ -24,9 +24,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Make python3.11 the default ───────────────────────────────────────────────
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
- && update-alternatives --install /usr/bin/python  python  /usr/bin/python3.11 1 \
- && python3 -m pip install --upgrade pip setuptools wheel
+RUN useradd -m -u 1000 user \
+    && mkdir -p /app/outputs/images \
+                 /app/outputs/audio \
+                 /app/outputs/video \
+                 /app/outputs/logs \
+                 /home/user/.cache/huggingface \
+    && chown -R user:user /app /home/user/.cache
+
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH \
+    HF_HOME=/home/user/.cache/huggingface \
+    TRANSFORMERS_CACHE=/home/user/.cache/huggingface
 
 # ── Working directory ─────────────────────────────────────────────────────────
 WORKDIR /app
@@ -37,12 +46,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Application code ──────────────────────────────────────────────────────────
 COPY . .
-
-# ── Output directories ────────────────────────────────────────────────────────
-RUN mkdir -p /app/outputs/images \
-             /app/outputs/audio \
-             /app/outputs/video \
-             /app/outputs/logs
 
 # ── Environment defaults (overridden by .env / docker-compose) ────────────────
 ENV OUTPUT_DIR=/app/outputs \

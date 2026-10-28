@@ -32,7 +32,7 @@ services:
 
     volumes:
       - ./outputs:/app/outputs
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/home/user/.cache/huggingface
 
     environment:
       - OUTPUT_DIR=/app/outputs
@@ -69,7 +69,7 @@ services:
 
     volumes:
       - ./outputs:/app/outputs
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/home/user/.cache/huggingface
 
     environment:
       - OUTPUT_DIR=/app/outputs

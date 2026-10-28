@@ -18,6 +18,12 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import torch
+from PIL import Image
+
+# Compatibility: MoviePy 1.0.3 uses Image.ANTIALIAS,
+# which Pillow 10+ removed.
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
 
 from utils.config import (
     AI_SCENE_INDICES,

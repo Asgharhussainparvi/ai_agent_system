@@ -7,19 +7,29 @@ from pathlib import Path
 import torch
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_DIR   = Path(os.getenv("OUTPUT_DIR", "/app/outputs"))
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_DEFAULT_OUTPUT_DIR = (
+    _PROJECT_ROOT / "app" / "outputs"
+    if os.name == "nt"
+    else Path("/app/outputs")
+)
+
+BASE_DIR = Path(os.getenv("OUTPUT_DIR", str(_DEFAULT_OUTPUT_DIR)))
 IMAGES_DIR = BASE_DIR / "images"
-AUDIO_DIR  = BASE_DIR / "audio"
-VIDEO_DIR  = BASE_DIR / "video"
-LOGS_DIR   = BASE_DIR / "logs"
+AUDIO_DIR = BASE_DIR / "audio"
+VIDEO_DIR = BASE_DIR / "video"
+LOGS_DIR = BASE_DIR / "logs"
 
 for _d in [IMAGES_DIR, AUDIO_DIR, VIDEO_DIR, LOGS_DIR]:
     _d.mkdir(parents=True, exist_ok=True)
+# ── API Server ────────────────────────────────────────────────────────────────
+API_HOST = os.getenv("API_HOST", "0.0.0.0")
+API_PORT = int(os.getenv("API_PORT", "8000"))
 
 # ── API Keys ──────────────────────────────────────────────────────────────────
-GROQ_API_KEY        = os.environ["GROQ_API_KEY"]
-HF_TOKEN            = os.environ["HF_TOKEN"]
-ELEVENLABS_API_KEY  = os.environ["ELEVENLABS_API_KEY"]
+GROQ_API_KEY        = os.getenv("GROQ_API_KEY", "")
+HF_TOKEN            = os.getenv("HF_TOKEN", "")
+ELEVENLABS_API_KEY  = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 
 YOUTUBE_CLIENT_ID     = os.getenv("YOUTUBE_CLIENT_ID", "")

@@ -1,0 +1,27 @@
+
+# Local Python environments
+.venv/
+.venv-*/
+venv/
+
+# Git and Python caches
+.git/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Generated output and model caches
+app/outputs/
+outputs/
+.cache/
+huggingface_cache/
+
+# Temporary backups
+*.bak

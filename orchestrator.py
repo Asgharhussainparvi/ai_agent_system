@@ -46,9 +46,11 @@ class PipelineState:
     image_paths:  List[str]                = field(default_factory=list)
     audio_path:   Optional[str]            = None
     video_path:   Optional[str]            = None
-    youtube_url:  Optional[str]            = None
-    scraped_topics: List[Dict]             = field(default_factory=list)
-    errors:       List[str]                = field(default_factory=list)
+    youtube_url: Optional[str] = None
+    youtube_status: str = "not_requested"
+    youtube_error: Optional[str] = None
+    scraped_topics: List[Dict] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
     started_at:   float                    = field(default_factory=time.time)
     elapsed_s:    float                    = 0.0
 
@@ -72,6 +74,22 @@ class Orchestrator:
         msg = f"[{stage}] {type(exc).__name__}: {exc}"
         _log.error(msg)
         self.state.errors.append(msg)
+
+    def _run_required_stage(self, stage: str, stage_fn: Any) -> bool:
+        errors_before = len(self.state.errors)
+
+        try:
+            succeeded = bool(stage_fn())
+        except Exception as exc:
+            self._err(stage, exc)
+            return False
+
+        if not succeeded and len(self.state.errors) == errors_before:
+            msg = f"[{stage}] Stage returned failure without recording an error."
+            _log.error(msg)
+            self.state.errors.append(msg)
+
+        return succeeded
 
     def _free_gpu(self):
         gc.collect()
@@ -144,48 +162,99 @@ class Orchestrator:
             return False
 
     # ── Stage 4: Video production ─────────────────────────────────────────────
+
     def _stage_video(self) -> bool:
         _log.info("▶ Stage 4/6 — VideoAgent (MoviePy + Motif-Video hybrid)")
+
         if not self.state.image_paths:
             _log.error("Skipping video — no images.")
             return False
+
         try:
-            title  = (self.state.content or {}).get("title", "AI Video")
+            title = (self.state.content or {}).get("title", "AI Video")
             images = [Path(p) for p in self.state.image_paths]
-            audio  = Path(self.state.audio_path) if self.state.audio_path else None
-            path   = VideoAgent().run(images, audio, title, self.state.content)
-            if path:
-                self.state.video_path = str(path)
-                _log.info("VideoAgent ✓  %s", path.name)
-                return True
-            return False
+            audio = Path(self.state.audio_path) if self.state.audio_path else None
+
+            path = VideoAgent().run(
+                images,
+                audio,
+                title,
+                self.state.content,
+            )
+
+            if not path:
+                _log.error("VideoAgent returned no output path.")
+                return False
+
+            video_path = Path(path)
+
+            if not video_path.is_file():
+                _log.error(
+                    "VideoAgent returned a path that does not exist: %s",
+                    video_path,
+                )
+                return False
+
+            if video_path.stat().st_size == 0:
+                _log.error(
+                    "VideoAgent produced an empty video file: %s",
+                    video_path,
+                )
+                return False
+
+            self.state.video_path = str(video_path)
+            _log.info(
+                "VideoAgent ✓ %s (%d bytes)",
+                video_path.name,
+                video_path.stat().st_size,
+            )
+            return True
+
         except Exception as exc:
             self._err("VideoAgent", exc)
             return False
 
+
     # ── Stage 5: YouTube upload ───────────────────────────────────────────────
     def _stage_youtube(self) -> bool:
         _log.info("▶ Stage 5/6 — YouTubeAgent")
+
         if not self.state.video_path:
-            _log.error("Skipping YouTube upload — no video.")
+            message = "Cannot upload: no video path is available."
+            self.state.youtube_status = "failed"
+            self.state.youtube_error = message
+            _log.error(message)
             return False
+
         if not YOUTUBE_REFRESH_TOKEN:
+            self.state.youtube_status = "skipped_no_token"
+            self.state.youtube_error = None
             _log.warning("No YOUTUBE_REFRESH_TOKEN set — skipping upload.")
             return False
+
         try:
             content = self.state.content or {}
             url = YouTubeAgent().upload(
-                video_path  = Path(self.state.video_path),
-                title       = content.get("title", self.state.topic[:100]),
-                description = content.get("description", ""),
-                tags        = content.get("tags", []),
-                privacy     = "public",
+                video_path=Path(self.state.video_path),
+                title=content.get("title") or self.state.topic[:100],
+                description=content.get("description", ""),
+                tags=content.get("tags", []),
+                privacy="public",
             )
+
+            if not url:
+                raise RuntimeError("YouTubeAgent returned no URL.")
+
             self.state.youtube_url = url
-            _log.info("YouTubeAgent ✓  %s", url)
+            self.state.youtube_status = "uploaded"
+            self.state.youtube_error = None
+            _log.info("YouTubeAgent ✓ %s", url)
             return True
+
         except Exception as exc:
-            self._err("YouTubeAgent", exc)
+            self.state.youtube_status = "failed"
+            self.state.youtube_error = f"{type(exc).__name__}: {exc}"
+            _log.error("[YouTubeAgent] %s", self.state.youtube_error)
             return False
 
     # ── Main run ──────────────────────────────────────────────────────────────
@@ -195,6 +264,10 @@ class Orchestrator:
         upload_to_youtube: bool = True,
     ) -> PipelineState:
         self.state.status = "running"
+        self.state.youtube_status = (
+            "not_attempted" if upload_to_youtube else "not_requested"
+        )
+        self.state.youtube_error = None
         _log.info("═" * 55)
         _log.info("  PIPELINE START  (job_id=%s)", self.state.job_id)
         _log.info("═" * 55)
@@ -211,22 +284,35 @@ class Orchestrator:
 
         self.state.snapshot()
 
-        # Steps 1–5
-        self._stage_content(topic);    self.state.snapshot()
-        self._stage_images();          self.state.snapshot()
-        self._stage_voice();           self.state.snapshot()
-        self._stage_video();           self.state.snapshot()
+                # Steps 1–4: Stop when a required stage fails.
+        required_stages = [
+            ("ContentAgent", lambda: self._stage_content(topic)),
+            ("ImageAgent", self._stage_images),
+            ("VoiceAgent", self._stage_voice),
+            ("VideoAgent", self._stage_video),
+        ]
 
-        if upload_to_youtube:
-            self._stage_youtube();     self.state.snapshot()
+        for stage_name, stage_fn in required_stages:
+            if not self._run_required_stage(stage_name, stage_fn):
+                break
+            self.state.snapshot()
+
+        # Optional upload is only attempted after required stages succeed.
+        if upload_to_youtube and not self.state.errors:
+            self._stage_youtube()
+            self.state.snapshot()
 
         # Finalise
         self.state.elapsed_s = round(time.time() - self.state.started_at, 1)
         self.state.status    = "error" if self.state.errors else "done"
 
         _log.info("═" * 55)
-        if self.state.errors:
-            _log.warning("PIPELINE DONE with %d error(s) in %ss", len(self.state.errors), self.state.elapsed_s)
+        if self.state.status == "error":
+            _log.error(
+                "PIPELINE FAILED with %d error(s) in %ss",
+                len(self.state.errors),
+                self.state.elapsed_s,
+            )
         else:
             _log.info("PIPELINE COMPLETE ✓ in %ss", self.state.elapsed_s)
         _log.info("═" * 55)
