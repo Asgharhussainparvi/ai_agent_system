@@ -42,8 +42,8 @@ WORKDIR /app
 
 # ── Python dependencies (cached layer) ───────────────────────────────────────
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+RUN python -m pip install --user --no-cache-dir --upgrade pip \
+ && python -m pip install --user --no-cache-dir -r requirements.txt
 # ── Application code ──────────────────────────────────────────────────────────
 COPY . .
 
@@ -68,4 +68,4 @@ RUN --mount=type=secret,id=GROQ_API_KEY,mode=0444 true
 RUN --mount=type=secret,id=HF_TOKEN,mode=0444 true
 # etc. for each secret
 
-CMD ["python", "main.py", "api"]
+CMD ["/usr/bin/python3.10", "main.py", "api"]

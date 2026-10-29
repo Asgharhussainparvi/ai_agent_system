@@ -16,13 +16,13 @@ services:
     restart: unless-stopped
 
     # GPU support (requires nvidia-container-toolkit on host)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
 
     ports:
       - "8000:8000"
@@ -56,13 +56,13 @@ services:
     container_name: ai_content_scheduler
     restart: unless-stopped
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
 
     env_file:
       - .env
@@ -75,7 +75,7 @@ services:
       - OUTPUT_DIR=/app/outputs
       - PYTHONUNBUFFERED=1
 
-    command: ["python", "scheduler.py"]
+    command: ["/usr/bin/python3.10", "scheduler.py"]
 
     depends_on:
       api:

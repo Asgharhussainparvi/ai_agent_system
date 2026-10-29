@@ -1,11 +1,11 @@
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║  Dockerfile — Autonomous AI Content System                      ║
-# ║  Base: NVIDIA CUDA 12.1 + Python 3.11                          ║
-# ╚══════════════════════════════════════════════════════════════════╝
+﻿# â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+# â•‘  Dockerfile â€” Autonomous AI Content System                      â•‘
+# â•‘  Base: NVIDIA CUDA 12.1 + Python 3.11                          â•‘
+# â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-# ── System dependencies ───────────────────────────────────────────────────────
+# â”€â”€ System dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
@@ -33,24 +33,24 @@ USER user
 ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# ── Working directory ─────────────────────────────────────────────────────────
+# â”€â”€ Working directory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WORKDIR /app
 
-# ── Python dependencies ───────────────────────────────────────────────────────
+# â”€â”€ Python dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir -r requirements.txt
 
-# ── Copy application code ─────────────────────────────────────────────────────
+# â”€â”€ Copy application code â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 COPY . .
 
-# ── Output directories (will be overridden by volume mount) ──────────────────
+# â”€â”€ Output directories (will be overridden by volume mount) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 RUN mkdir -p /app/outputs/images \
              /app/outputs/audio \
              /app/outputs/video \
              /app/outputs/logs
 
-# ── Environment defaults (override via .env or docker-compose) ────────────────
+# â”€â”€ Environment defaults (override via .env or docker-compose) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ENV OUTPUT_DIR=/app/outputs \
     API_HOST=0.0.0.0 \
     API_PORT=7860 \
@@ -59,11 +59,12 @@ ENV OUTPUT_DIR=/app/outputs \
 
 EXPOSE 7860
 
-# ── Healthcheck ───────────────────────────────────────────────────────────────
+# â”€â”€ Healthcheck â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:7860/health || exit 1
 
-# ── Default command: start API server ─────────────────────────────────────────
+# â”€â”€ Default command: start API server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-CMD ["python", "main.py", "api"]
+CMD ["/usr/bin/python3.10", "main.py", "api"]
+
 
